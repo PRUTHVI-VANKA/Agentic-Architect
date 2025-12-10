@@ -1,0 +1,31 @@
+from app.state.cbt_state import CBTState
+
+
+MAX_ITERATIONS = 2
+MIN_EMPATHY = 0.7
+
+
+def supervisor_agent(state: CBTState) -> str:
+    """
+    Decide what to do next:
+    - if unsafe → ask for revision
+    - if empathy_score low → revision (if iterations left)
+    - else → pause for human review
+    Returns a string used for conditional routing.
+    """
+    iteration = state.get("iteration", 0) + 1
+    state["iteration"] = iteration
+
+    # If any safety flags, re-draft
+    if state.get("safety_flags"):
+        state["status"] = "drafting"
+        return "revise"
+
+    empathy = state.get("empathy_score", 0.0)
+    if empathy < MIN_EMPATHY and iteration < MAX_ITERATIONS:
+        state["status"] = "drafting"
+        return "revise"
+
+    # Otherwise, we're ready for human review
+    state["status"] = "paused"
+    return "pause_for_human"
